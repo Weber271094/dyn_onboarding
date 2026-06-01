@@ -1302,10 +1302,29 @@ function setStorage(data) {
   if (FIREBASE_URL && FIREBASE_URL !== 'HIER_DEINE_FIREBASE_URL_EINTRAGEN') {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(function() {
+      // Nur die relevanten Felder speichern (nie base64 oder HTML-Inhalte)
+      var toSave = {
+        _ts: _cache._ts,
+        checked: _cache.checked || {},
+        textareas: _cache.textareas || {},
+        taskTexts: _cache.taskTexts || {},
+        editables: _cache.editables || {},
+        addedTasks: _cache.addedTasks || {},
+        deletedTasks: _cache.deletedTasks || [],
+        name: _cache.name || '',
+        date: _cache.date || ''
+      };
+      var body = JSON.stringify(toSave);
+      // Sicherheitscheck: max 900KB
+      if (body.length > 900000) {
+        console.warn('Firebase: Daten zu gross (' + Math.round(body.length/1024) + 'KB), wird nicht gespeichert');
+        _updateSyncStatus(false);
+        return;
+      }
       fetch(FIREBASE_URL + '/' + DB_KEY + '.json', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(_cache)
+        body: body
       }).then(function() {
         _updateSyncStatus(true);
       }).catch(function(e) { _updateSyncStatus(false); });
