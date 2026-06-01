@@ -1319,6 +1319,7 @@ function setStorage(data) {
         checked: _cleanKeys(_cache.checked || {}),
         textareas: _cleanKeys(_cache.textareas || {}),
         addedTasks: _cleanKeys(_cache.addedTasks || {}),
+        editables: _cleanKeys(_cache.editables || {}),
         deletedTasks: _cache.deletedTasks || [],
         name: _cache.name || '',
         date: _cache.date || ''
@@ -1410,11 +1411,13 @@ function collectAllState() {
     d.taskTexts[el.id] = el.innerHTML;
   });
 
-  // Editables
+  // Editables — alleen tekst opslaan, geen HTML met base64
   d.editables = {};
   document.querySelectorAll('[contenteditable="true"][id]').forEach(function(el) {
     if (!el.classList.contains('task-text')) {
-      d.editables[el.id] = el.innerHTML;
+      var safeId = _safeFirebaseKey ? _safeFirebaseKey(el.id) : el.id;
+      // Alleen innerText opslaan (geen base64 plaatjes)
+      d.editables[safeId] = el.innerText || el.textContent || '';
     }
   });
 
@@ -1507,9 +1510,13 @@ function saveEditables() { saveAll(); }
 async function restoreEditables() {
   const d = await getStorage();
   if (!d.editables) return;
-  Object.keys(d.editables).forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el && el.getAttribute('contenteditable') === 'true') el.innerHTML = d.editables[id];
+  // Probeer zowel originele als safe key
+  document.querySelectorAll('[contenteditable="true"][id]').forEach(function(el) {
+    var safeId = _safeFirebaseKey ? _safeFirebaseKey(el.id) : el.id;
+    var val = d.editables[safeId] || d.editables[el.id];
+    if (val !== undefined && el.getAttribute('contenteditable') === 'true') {
+      el.innerText = val;
+    }
   });
 }
 
@@ -1517,16 +1524,20 @@ async function restoreEditables() {
 // Key: group label text → array of {text, checked} objects
 function getGroupKey(group) {
   // Use stable data-group-key set at render time — never changes
-  if (group.dataset && group.dataset.groupKey) return group.dataset.groupKey;
+  if (group.dataset && group.dataset.groupKey) return _safeFirebaseKey(group.dataset.groupKey);
   // Fallback: strip dot span from tg-label
   var lbl = group.querySelector('.tg-label');
   if (lbl) {
     var clone = lbl.cloneNode(true);
     var dot = clone.querySelector('.tg-dot');
     if (dot) dot.remove();
-    return clone.textContent.replace(/\s+/g, ' ').trim();
+    return _safeFirebaseKey(clone.textContent.replace(/\s+/g, ' ').trim());
   }
-  return group.id || group.className;
+  return _safeFirebaseKey(group.id || group.className);
+}
+
+function _safeFirebaseKey(k) {
+  return k.replace(/[.#$[\]\/]/g, '_').replace(/\s+/g, '_').replace(/&/g, '_').replace(/\?/g, '').replace(/—/g, '_').replace(/\.{2,}/g, '_');
 }
 
 function saveAddedTasks() { saveAll(); }
