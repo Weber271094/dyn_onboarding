@@ -1304,10 +1304,20 @@ function setStorage(data) {
     _saveTimer = setTimeout(function() {
       // Nur die relevanten Felder speichern (nie base64 oder HTML-Inhalte)
       // Nur kleine Felder speichern - taskTexts und editables weglassen (können groß sein)
+      // Firebase erlaubt keine Keys mit . / $ # [ ] — bereinigen
+      function _cleanKeys(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        var clean = {};
+        Object.keys(obj).forEach(function(k) {
+          var safeKey = k.replace(/[\.\/$#\[\]]/g, '_');
+          clean[safeKey] = obj[k];
+        });
+        return clean;
+      }
       var toSave = {
         _ts: _cache._ts,
-        checked: _cache.checked || {},
-        textareas: _cache.textareas || {},
+        checked: _cleanKeys(_cache.checked || {}),
+        textareas: _cleanKeys(_cache.textareas || {}),
         addedTasks: _cache.addedTasks || {},
         deletedTasks: _cache.deletedTasks || [],
         name: _cache.name || '',
