@@ -1303,12 +1303,11 @@ function setStorage(data) {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(function() {
       // Nur die relevanten Felder speichern (nie base64 oder HTML-Inhalte)
+      // Nur kleine Felder speichern - taskTexts und editables weglassen (können groß sein)
       var toSave = {
         _ts: _cache._ts,
         checked: _cache.checked || {},
         textareas: _cache.textareas || {},
-        taskTexts: _cache.taskTexts || {},
-        editables: _cache.editables || {},
         addedTasks: _cache.addedTasks || {},
         deletedTasks: _cache.deletedTasks || [],
         name: _cache.name || '',
